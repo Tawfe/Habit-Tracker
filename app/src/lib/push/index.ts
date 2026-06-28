@@ -1,13 +1,14 @@
 import { Platform } from 'react-native';
-import { detectEcosystem, PushEcosystem } from './ecosystem';
+import { detectEcosystem, hasFirebase, PushEcosystem } from './ecosystem';
 import { supabase } from '../supabase';
 
 export type { PushEcosystem } from './ecosystem';
 
 /**
  * Acquire the device push token for whichever ecosystem this device uses.
- *  - fcm / apns: react-native-firebase (Firebase delivers APNs tokens on iOS too)
- *  - hms:        @hmscore/react-native-hms-push (Huawei flavor only)
+ * Callers must only invoke this for an ecosystem whose native module exists
+ * (detectEcosystem guarantees that), so the requires below never load a
+ * native-less module.
  */
 async function getTokenFor(ecosystem: PushEcosystem): Promise<string> {
   if (ecosystem === 'fcm' || ecosystem === 'apns') {
@@ -19,19 +20,21 @@ async function getTokenFor(ecosystem: PushEcosystem): Promise<string> {
   // ecosystem === 'hms'
   const { HmsPushInstanceId } = require('@hmscore/react-native-hms-push');
   const result = await HmsPushInstanceId.getToken('');
-  // HMS returns the token via an event in some versions; this covers the
-  // synchronous shape. See docs/DEPLOY-HUAWEI.md for the listener variant.
   return result?.result ?? result;
 }
 
 /**
  * Register (or refresh) this device with the backend so the server can route
- * "missed check-in" pushes to it. Idempotent on (user, token).
+ * "missed check-in" pushes to it. No-ops cleanly if no push provider is wired
+ * up yet (push is a placeholder until Firebase/HMS are configured).
  */
 export async function registerDeviceForPush(): Promise<void> {
   const ecosystem = await detectEcosystem();
-  const token = await getTokenFor(ecosystem);
+  if (!ecosystem) {
+    return; // push not configured on this build — nothing to do
+  }
 
+  const token = await getTokenFor(ecosystem);
   const platform =
     Platform.OS === 'ios' ? 'ios' : ecosystem === 'hms' ? 'huawei' : 'android';
 
@@ -45,15 +48,16 @@ export async function registerDeviceForPush(): Promise<void> {
 
 /**
  * Subscribe to token refreshes so we never hold a stale token.
- * Call once at app start (after auth). Returns an unsubscribe fn.
+ * No-ops when Firebase isn't linked. Returns an unsubscribe fn.
  */
 export function onTokenRefresh(callback: () => void): () => void {
+  if (!hasFirebase()) {
+    return () => {};
+  }
   try {
     const messaging = require('@react-native-firebase/messaging').default;
     return messaging().onTokenRefresh(() => callback());
   } catch {
-    // HMS refresh arrives via a native event listener; wire it in the
-    // Huawei flavor. No-op here keeps the default build clean.
     return () => {};
   }
 }

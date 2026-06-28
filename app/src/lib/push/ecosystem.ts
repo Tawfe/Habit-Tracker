@@ -11,42 +11,34 @@ import { Platform, NativeModules } from 'react-native';
 export type PushEcosystem = 'apns' | 'fcm' | 'hms';
 
 /**
- * Detect whether Google Play Services is usable on this Android device.
- * @react-native-firebase exposes this, but we keep detection isolated so the
- * Huawei flavor (which may not bundle Firebase) can override it.
+ * Is the Firebase native module linked? (Drives APNs token on iOS + FCM on
+ * Android.) Returns false while push is a placeholder — see react-native.config.js.
  */
-async function androidHasGooglePlayServices(): Promise<boolean> {
-  try {
-    // react-native-firebase reports GMS availability.
-    // Lazy require so a Huawei-only build that omits Firebase still compiles.
-    const messaging = require('@react-native-firebase/messaging').default;
-    // hasPermission throws/!available when GMS is missing on Huawei.
-    await messaging().getToken();
-    return true;
-  } catch {
-    return false;
-  }
+export function hasFirebase(): boolean {
+  return Boolean(NativeModules.RNFBAppModule);
 }
 
-/**
- * Whether HMS Core (Huawei) is present. The HMS module is only linked in the
- * `huawei` product flavor, so a normal build returns false immediately.
- */
-function hasHms(): boolean {
+/** Is HMS Core (Huawei) present? Only in the Huawei flavor. */
+export function hasHms(): boolean {
   return Boolean(NativeModules.HmsInstanceModule || NativeModules.HMSPush);
 }
 
-export async function detectEcosystem(): Promise<PushEcosystem> {
+/**
+ * Detect this device's push ecosystem, or null if no push provider is wired up
+ * yet (so callers can no-op cleanly instead of crashing).
+ */
+export async function detectEcosystem(): Promise<PushEcosystem | null> {
   if (Platform.OS === 'ios') {
-    return 'apns';
+    return hasFirebase() ? 'apns' : null;
   }
-  // Android: prefer GMS/FCM; fall back to HMS on Huawei devices.
-  if (await androidHasGooglePlayServices()) {
+  // Android: Firebase present → FCM. Otherwise fall back to HMS on Huawei.
+  // (Refine FCM-vs-HMS with a real Google Play Services check when you ship
+  //  the Huawei flavor — see docs/DEPLOY-HUAWEI.md.)
+  if (hasFirebase()) {
     return 'fcm';
   }
   if (hasHms()) {
     return 'hms';
   }
-  // No usable push provider (rare). Caller should degrade gracefully.
-  throw new Error('No supported push ecosystem on this device (no GMS, no HMS).');
+  return null;
 }
