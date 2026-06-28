@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Env & secrets — never commit
+.env
+.env.*
+!.env.example
+*.keystore
+*.p8
+*.p12
+google-services.json
+GoogleService-Info.plist
+agconnect-services.json
+**/_shared/secrets/
+
+# Supabase local
+backend/supabase/.branches/
+backend/supabase/.temp/
+
+# OS / editor
+.DS_Store
+*.log

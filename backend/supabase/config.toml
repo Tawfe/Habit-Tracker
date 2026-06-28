@@ -1,0 +1,12 @@
+# Minimal Supabase project config. Run `supabase link` to bind to your project.
+project_id = "habit-tracker"
+
+[functions.register-device]
+verify_jwt = true
+
+[functions.join-match-queue]
+verify_jwt = true
+
+[functions.missed-checkin-sweep]
+# Called by pg_cron with a shared secret header, not a user JWT.
+verify_jwt = false
