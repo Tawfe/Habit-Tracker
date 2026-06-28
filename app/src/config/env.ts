@@ -1,19 +1,27 @@
 import Config from 'react-native-config';
+import { CREDENTIALS } from './credentials';
 
 /**
- * Centralised, typed access to build-time env vars.
- * Values come from `.env` via react-native-config (see .env.example).
+ * Centralised, typed access to config.
+ * Prefers react-native-config (.env, Android) and falls back to
+ * src/config/credentials.ts (the simple cross-platform path used by iOS).
  */
-function required(name: string, value: string | undefined): string {
+function resolve(name: string, fromEnv: string | undefined, fromFile: string): string {
+  const value = fromEnv || fromFile;
   if (!value) {
     throw new Error(
-      `Missing required env var "${name}". Copy .env.example to .env and fill it in.`,
+      `Missing ${name}. Fill it into app/src/config/credentials.ts ` +
+        `(or app/.env on Android).`,
     );
   }
   return value;
 }
 
 export const env = {
-  supabaseUrl: required('SUPABASE_URL', Config.SUPABASE_URL),
-  supabaseAnonKey: required('SUPABASE_ANON_KEY', Config.SUPABASE_ANON_KEY),
+  supabaseUrl: resolve('SUPABASE_URL', Config.SUPABASE_URL, CREDENTIALS.supabaseUrl),
+  supabaseAnonKey: resolve(
+    'SUPABASE_ANON_KEY',
+    Config.SUPABASE_ANON_KEY,
+    CREDENTIALS.supabaseAnonKey,
+  ),
 };
