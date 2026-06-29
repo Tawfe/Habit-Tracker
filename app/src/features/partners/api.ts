@@ -19,15 +19,20 @@ export async function getMyPartnership(): Promise<Partnership | null> {
   return data;
 }
 
+export type MatchResult = {
+  status: 'queued' | 'matched' | 'already_partnered';
+};
+
 /**
- * Join the matchmaking queue. A backend function (or DB trigger) pairs two
- * waiting users and creates a `partnerships` row. See backend/README.md.
+ * Join the matchmaking queue. The backend pairs two waiting users and creates a
+ * `partnerships` row. Returns whether you were queued or matched immediately.
  */
-export async function joinMatchQueue(): Promise<void> {
-  const { error } = await supabase.functions.invoke('join-match-queue', {
+export async function joinMatchQueue(): Promise<MatchResult> {
+  const { data, error } = await supabase.functions.invoke('join-match-queue', {
     body: {},
   });
   if (error) throw error;
+  return data as MatchResult;
 }
 
 export async function respondToPartnership(

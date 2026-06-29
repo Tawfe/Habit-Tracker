@@ -36,6 +36,24 @@ export function PartnerScreen() {
     }
   };
 
+  const findPartner = async () => {
+    setBusy(true);
+    try {
+      const result = await joinMatchQueue();
+      if (result.status === 'queued') {
+        Alert.alert(
+          "You're in the queue",
+          "We'll pair you with a partner as soon as someone else is waiting. Check back here.",
+        );
+      }
+      await load();
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (!partnership) {
     return (
       <View style={styles.container}>
@@ -47,7 +65,7 @@ export function PartnerScreen() {
         <Pressable
           style={styles.button}
           disabled={busy}
-          onPress={() => run(joinMatchQueue)}>
+          onPress={findPartner}>
           <Text style={styles.buttonText}>Find me a partner</Text>
         </Pressable>
       </View>
