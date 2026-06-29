@@ -33,7 +33,7 @@ create trigger on_auth_user_created
 -- ---------------------------------------------------------------------------
 create table public.devices (
   id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references auth.users (id) on delete cascade,
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
   platform   text not null check (platform in ('ios', 'android', 'huawei')),
   ecosystem  text not null check (ecosystem in ('apns', 'fcm', 'hms')),
   push_token text not null,
@@ -46,7 +46,7 @@ create table public.devices (
 -- ---------------------------------------------------------------------------
 create table public.habits (
   id         uuid primary key default gen_random_uuid(),
-  user_id    uuid not null references auth.users (id) on delete cascade,
+  user_id    uuid not null default auth.uid() references auth.users (id) on delete cascade,
   name       text not null,
   archived   boolean not null default false,
   created_at timestamptz not null default now()
@@ -57,7 +57,7 @@ create table public.habits (
 -- ---------------------------------------------------------------------------
 create table public.checkins (
   id           uuid primary key default gen_random_uuid(),
-  user_id      uuid not null references auth.users (id) on delete cascade,
+  user_id      uuid not null default auth.uid() references auth.users (id) on delete cascade,
   habit_id     uuid not null references public.habits (id) on delete cascade,
   date         date not null,
   completed_at timestamptz not null default now(),
@@ -84,7 +84,7 @@ create unique index partnerships_active_b on public.partnerships (user_b) where 
 -- match_queue: users waiting to be paired
 -- ---------------------------------------------------------------------------
 create table public.match_queue (
-  user_id   uuid primary key references auth.users (id) on delete cascade,
+  user_id   uuid primary key default auth.uid() references auth.users (id) on delete cascade,
   joined_at timestamptz not null default now()
 );
 
